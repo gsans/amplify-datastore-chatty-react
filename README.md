@@ -246,7 +246,7 @@ type Chatty @model {
   id: ID!
   user: String!
   message: String!
-  createdAt: AWSDateTime!
+  createdAt: AWSDateTime
 }
 ```
 
