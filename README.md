@@ -135,6 +135,13 @@ Now, we'll run the push command and the cloud resources will be created in our A
 
 ```bash
 amplify push
+
+Current Environment: dev
+
+| Category | Resource name      | Operation | Provider plugin   |
+| -------- | ------------------ | --------- | ----------------- |
+| Auth     | amplifyappuuid     | Create    | awscloudformation |
+? Are you sure you want to continue? Yes
 ```
 
 To quickly check your newly created __Cognito User Pool__ you can run
