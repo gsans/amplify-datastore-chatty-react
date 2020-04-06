@@ -1,13 +1,14 @@
 # Cloud-enabled Amplify DataStore workshop using React
 
-In this workshop we'll learn how to use Amplify DataStore using React & [AWS Amplify](https://aws-amplify.github.io/).
+In this workshop we'll learn how to use Amplify DataStore to create `Chatty` a chat app using React & [AWS Amplify](https://aws-amplify.github.io/).
 
-![](./header.jpg)
+![](./header.png) 
 
 ### Topics we'll be covering:
 
 - [Authentication](#adding-authentication)
 - [GraphQL API with AWS AppSync](#adding-a-graphql-api)
+- [Setup Amplify DataStore](#setup-amplify-datastore)
 - [Deploying via the Amplify Console](#deploying-via-the-amplify-console)
 - [Removing / Deleting Services](#removing-services)
 - [Appendix](#appendix)
@@ -49,7 +50,7 @@ Now change into the new app directory & install the AWS Amplify & AWS Amplify Re
 
 ```bash
 cd amplify-datastore
-npm install --save aws-amplify aws-amplify-react
+npm install --save aws-amplify aws-amplify-react moment
 ```
 
 > If you have issues related to EACCESS try using sudo: `sudo npm <command>`.
@@ -112,6 +113,8 @@ Now, the AWS Amplify CLI has iniatilized a new project and you will see a new fo
 
 
 ## Adding Authentication
+
+In order to display the user sending messages for our chat, we will require users to register and login. We can implement this requirement using the `auth` category.
 
 To add authentication, we can use the following command:
 
@@ -197,8 +200,7 @@ import { Auth } from 'aws-amplify'
 function App() {
   useEffect(() => {
     Auth.currentAuthenticatedUser()
-      .then(user => console.log({ user }))
-      .catch(error => console.log({ error }))
+      .then(user => console.log({ user })
   })
   return (
     <div className="App">
@@ -209,7 +211,7 @@ function App() {
   )
 }
 
-export default App
+export default withAuthenticator(App, { includeGreetings: true })
 ```
 
 ## Adding a GraphQL API
@@ -222,25 +224,33 @@ amplify add api
 
 Answer the following questions
 
-- Please select from one of the above mentioned services __GraphQL__   
-- Provide API name: __Chatty__   
+- Please select from one of the below mentioned services: __GraphQL__   
+- Provide API name: __chattyAPI__   
 - Choose an authorization type for the API __API key__   
-- Do you have an annotated GraphQL schema? __N__   
+- Enter a description for the API key: __API description__
+- After how many days from now the API key should expire (1-365): __7__
+- Do you want to configure advanced settings for the GraphQL API? __Yes, I want to make some additional changes__
+- Configure additional auth types? __N__
+- Configure conflict detection? __Y__
+- Select the default resolution strategy __Auto Merge__
+- Do you want to override default per model settings? __N__
+- Do you have an annotated GraphQL schema? __N__ 
 - Do you want a guided schema creation? __Y__   
 - What best describes your project: __Single object with fields (e.g. “Todo” with ID, name, description)__   
-- Do you want to edit the schema now? (Y/n) __Y__   
+- Do you want to edit the schema now? __Y__   
 
 > When prompted, update the schema to the following:   
 
 ```graphql
-type Coin @model {
+type Chatty @model {
   id: ID!
-  clientId: ID
-  name: String!
-  symbol: String!
-  price: Float!
+  user: String!
+  message: String!
+  createdAt: AWSDateTime!
 }
 ```
+
+This will allow us to display each user messages together with the creation date and time.
 
 > Next, let's push the configuration to our account:
 
@@ -260,224 +270,176 @@ To view the service you can run the `console` command the feature you'd like to 
 amplify console api
 ```
 
-### Adding mutations from within the AWS AppSync Console
+## Setup Amplify DataStore
 
-In the AWS AppSync console, open your API & then click on Queries.
+### Installing the Amplify DataStore
 
-Execute the following mutation to create a new coin in the API:
+Next, we'll install the necessary dependencies:
 
-```graphql
-mutation createCoin {
-  createCoin(input: {
-    name: "Bitcoin"
-    symbol: "BTC"
-    price: 9000
-  }) {
-    id name symbol price
-  }
-}
+```bash
+npm install --save @aws-amplify/core @aws-amplify/datastore
 ```
 
-Now, let's query for the coin:
+### Data Model Generation
 
-```graphql
-query listCoins {
-  listCoins {
-    items {
-      id
-      name
-      symbol
-      price
-    }
-  }
-}
+Next, we'll generate the models to access our messages from our __ChattyAPI__
+
+```bash
+amplify codegen models
 ```
 
-We can even add search / filter capabilities when querying:
+Now, the AWS Amplify CLI has generated the necessary data models and you will see a new folder in your source: __models__. The files in this folder hold your data model classes and schema.
 
-```graphql
-query listCoins {
-  listCoins(filter: {
-    price: {
-      gt: 2000
-    }
-  }) {
-    items {
-      id
-      name
-      symbol
-      price
-    }
-  }
-}
+```bash
+<amplify-app>
+    |_ src
+      |_ models
 ```
 
-### Interacting with the GraphQL API from our client application - Querying for data
+### Creating a message
 
-Now that the GraphQL API is created we can begin interacting with it!
+Now that the GraphQL API and Data Models are created we can begin interacting with them!
 
-The first thing we'll do is perform a query to fetch data from our API.
-
-To do so, we need to define the query, execute the query, store the data in our state, then list the items in our UI.
-
-### src/App.js
+The first thing we'll do is create a new message using the generated Data Models and save.
 
 ```js
-// src/App.js
-import React, { useEffect, useState } from 'react'
+import { DataStore } from "@aws-amplify/datastore";
+import { Chatty } from "./models";
 
-// imports from Amplify library
-import { API, graphqlOperation } from 'aws-amplify'
-import { withAuthenticator } from 'aws-amplify-react'
-
-// import query
-import { listCoins } from './graphql/queries'
-
-function App() {
-  const [coins, updateCoins] = useState([])
-
-  useEffect(() => {
-    getData()
-  }, [])
-
-  async function getData() {
-    try {
-      const coinData = await API.graphql(graphqlOperation(listCoins))
-      console.log('data from API: ', coinData)
-      updateCoins(coinData.data.listCoins.items)
-    } catch (err) {
-      console.log('error fetching data..', err)
-    }
-  }
-
-  return (
-    <div>
-      {
-        coins.map((c, i) => (
-          <div key={i}>
-            <h2>{c.name}</h2>
-            <h4>{c.symbol}</h4>
-            <p>{c.price}</p>
-          </div>
-        ))
-      }
-    </div>
-  )
-}
-
-export default withAuthenticator(App, { includeGreetings: true })
+await DataStore.save(
+  new Chatty({
+    user: "amplify-user",
+    message: "Hi everyone!",
+    createdAt: new Date().toISOString()
+  })
+)
 ```
 
-## Performing mutations
+This will create a record locally in your browser and synchronise it in the background using the underlying GraphQL API. 
 
- Now, let's look at how we can create mutations. Let's change the component to use a `useReducer` hook.
+### Querying data
+
+Let's now see how we can query data using Amplify DataStore. In order to query our Data Model we will use a query and a predicate to indicate that we want all records. 
 
 ```js
-// src/App.js
+import { DataStore, Predicates } from "@aws-amplify/datastore";
+import { Chatty } from "./models";
+
+const messages = await DataStore.query(Chatty, Predicates.ALL);
+```
+
+This will return an array of messages that we can display in our UI.
+
+Predicates also support filters for common types like Strings, Numbers and Lists.
+
+> Find all supported filters at [Query with Predicates](https://aws-amplify.github.io/docs/js/datastore#query-with-predicates)
+
+## Creating the UI
+
+ Now, let's look at how we can create the UI to create and display messages for our chat. We will use `useReducer` hook to keep our state.
+
+```js
 import React, { useEffect, useReducer } from 'react'
-import { API, graphqlOperation } from 'aws-amplify'
+import './App.css';
 import { withAuthenticator } from 'aws-amplify-react'
-import { listCoins } from './graphql/queries'
-import { createCoin as CreateCoin } from './graphql/mutations'
+import { Auth } from 'aws-amplify'
+import { DataStore, Predicates } from "@aws-amplify/datastore";
+import { Chatty } from "./models";
+import moment from 'moment'
 
-// import uuid to create a unique client ID
-import uuid from 'uuid/v4'
-
-const CLIENT_ID = uuid()
-
-// create initial state
 const initialState = {
-  name: '', price: '', symbol: '', coins: []
+  username: "",
+  messages: [],
+  message: { message: "", createdAt: "" }
 }
 
-// create reducer to update state
 function reducer(state, action) {
   switch(action.type) {
-    case 'SETCOINS':
-      return { ...state, coins: action.coins }
-    case 'SETINPUT':
-      return { ...state, [action.key]: action.value }
-    default:
-      return state
+    case 'setUser':
+      return { ...state, username: action.username }
+    case 'set':
+      return { ...state, messages: action.messages }
+    case 'add':
+      return { ...state, messages: [ ...state.messages, action.message ] }
+    case 'updateInput':
+      return { ...state, message: { [action.inputValue]: action.value } }
+    default: new Error()
   }
+}
+
+async function getMessages(dispatch) {
+  try {
+    const messagesData = await DataStore.query(Chatty, Predicates.ALL);
+    const sorted = [...messagesData].sort((a, b) => -a.createdAt.localeCompare(b.createdAt))
+    dispatch({ type: 'set', messages: sorted })
+  } catch (err) {
+    console.log('error fetching messages...', err)
+  }
+}
+
+async function createMessage(state, dispatch) {
+  if (state.message.message === '') return;
+  try {
+    await DataStore.save(
+      new Chatty({
+        user: state.username,
+        message: state.message.message,
+        createdAt: new Date().toISOString()
+      })
+    );
+    state.message.message = '';
+    getMessages(dispatch);
+  } catch (err) {
+    console.log('error creating message...', err)
+  }
+}
+
+function updater(value, inputValue, dispatch) {
+  dispatch({ type: 'updateInput', value, inputValue })
 }
 
 function App() {
   const [state, dispatch] = useReducer(reducer, initialState)
 
   useEffect(() => {
-    getData()
+    Auth.currentAuthenticatedUser().then(user => {
+      dispatch({ type: 'setUser', username: user.username })
+    })
+    getMessages(dispatch)
   }, [])
 
-  async function getData() {
-    try {
-      const coinData = await API.graphql(graphqlOperation(listCoins))
-      console.log('data from API: ', coinData)
-      dispatch({ type: 'SETCOINS', coins: coinData.data.listCoins.items})
-    } catch (err) {
-      console.log('error fetching data..', err)
-    }
-  }
-
-  async function createCoin() {
-    const { name, price, symbol } = state
-    if (name === '' || price === '' || symbol === '') return
-    const coin = {
-      name, price: parseFloat(price), symbol, clientId: CLIENT_ID
-    }
-    const coins = [...state.coins, coin]
-    dispatch({ type: 'SETCOINS', coins })
-    console.log('coin:', coin)
-    
-    try {
-      await API.graphql(graphqlOperation(CreateCoin, { input: coin }))
-      console.log('item created!')
-    } catch (err) {
-      console.log('error creating coin...', err)
-    }
-  }
-
-  // change state then user types into input
-  function onChange(e) {
-    dispatch({ type: 'SETINPUT', key: e.target.name, value: e.target.value })
-  }
-
-  // add UI with event handlers to manage user input
   return (
-    <div>
-      <input
-        name='name'
-        placeholder='name'
-        onChange={onChange}
-        value={state.name}
-      />
-      <input
-        name='price'
-        placeholder='price'
-        onChange={onChange}
-        value={state.price}
-      />
-      <input
-        name='symbol'
-        placeholder='symbol'
-        onChange={onChange}
-        value={state.symbol}
-      />
-      <button onClick={createCoin}>Create Coin</button>
-      {
-        state.coins.map((c, i) => (
-          <div key={i}>
-            <h2>{c.name}</h2>
-            <h4>{c.symbol}</h4>
-            <p>{c.price}</p>
+    <div className="app">
+      <div>
+        <input
+          type="text" placeholder="Enter your message..."
+          onChange={ e => updater(e.target.value, 'message', dispatch) }
+          value={ state.message.message }
+        />
+        <button onClick={() => createMessage(state, dispatch)}>Create Message</button>
+        { state.messages.map((message, index) => (
+          <div key={ message.id }>
+            <div> { message.user }</div>
+            <div> { message.message }</div>
+            <div> { moment(message.createdAt).format('HH:mm:ss')}</div>
           </div>
-        ))
-      }
+        ))}
+      </div>
     </div>
-  )
+  );
 }
 
 export default withAuthenticator(App, { includeGreetings: true })
+```
+
+## Deleting all messages
+
+One of the main advantages of working using Amplify DataStore is being able to run batch mutations without having to use a series of individual operations. 
+
+See below how we can use delete together with a predicate to remove all messages.
+
+```js
+await DataStore.delete(Chatty, Predicates.ALL);
 ```
 
 ### GraphQL Subscriptions
@@ -487,37 +449,20 @@ Next, let's see how we can create a subscription to subscribe to changes of data
 To do so, we need to define the subscription, listen for the subscription, & update the state whenever a new piece of data comes in through the subscription.
 
 ```js
-// import the subscription
-import { onCreateCoin } from './graphql/subscriptions'
-
-// update reducer
-function reducer(state, action) {
-  switch(action.type) {
-    case 'SETCOINS':
-      return { ...state, coins: action.coins }
-    case 'SETINPUT':
-      return { ...state, [action.key]: action.value }
-    // new �
-    case 'ADDCOIN':
-      return { ...state, coins: [...state.coins, action.coin] }
-    default:
-      return state
-  }
-}
-
 // subscribe in useEffect
-useEffect(() => {
-  const subscription = API.graphql(graphqlOperation(onCreateCoin)).subscribe({
-      next: (eventData) => {
-        const coin = eventData.value.data.onCreateCoin
-        if (coin.clientId === CLIENT_ID) return
-        dispatch({ type: 'ADDCOIN', coin  })
-      }
-  })
-  return () => subscription.unsubscribe()
-}, [])
-```
+  useEffect(() => {
+    Auth.currentAuthenticatedUser().then(user => {
+      dispatch({ type: 'setUser', username: user.username })
+    })
+    getMessages(dispatch)
 
+    const subscription = DataStore.observe(Chatty).subscribe(msg => {
+      console.log(msg.model, msg.opType, msg.element);
+      getMessages(dispatch)
+    });
+    return () => subscription.unsubscribe();
+  }, [])
+```
 
 ## Deploying via the Amplify Console
 
@@ -537,7 +482,7 @@ git commit -m 'initial commit'
 git push origin master
 ```
 
-Next we'll visit the Amplify Console in our AWS account at [https://ap-southeast-2.console.aws.amazon.com/amplify/home](https://ap-southeast-2.console.aws.amazon.com/amplify/home).
+Next we'll visit the Amplify Console in our AWS account at [https://eu-west-2.console.aws.amazon.com/amplify/home](https://eu-west-2.console.aws.amazon.com/amplify/home).
 
 Here, we'll click __Get Started__ to create a new deployment. Next, authorize Github as the repository service.
 
@@ -548,22 +493,6 @@ In the next screen, we'll create a new role & use this role to allow the Amplify
 Finally, we can click __Save and Deploy__ to deploy our application!
 
 Now, we can push updates to Master to update our application.
-
-## React Native
-
-AWS Amplify also has framework support for [React Native](https://aws-amplify.github.io/docs/js/start?platform=react-native).
-
-To get started with using AWS Amplify with React Native, we'll need to install the __AWS Amplify React Native__ package & then link the dependencies.
-
-```sh
-npm install aws-amplify-react-native
-
-# If using Expo, you do not need to link these two libraries as they are both part of the Expo SDK.
-react-native link amazon-cognito-identity-js
-react-native link react-native-vector-icons
-```
-
-Implementing features with AWS Amplify in React Native is the same as the features implemented in the other steps of this workshop. The only difference is that you will be working with React Native primitives vs HTML elements.
 
 ## Removing Services
 
@@ -599,11 +528,19 @@ Follow the steps [here](https://aws.amazon.com/premiumsupport/knowledge-center/c
 
 ### Trobleshooting
 
-Message: The AWS Access Key Id needs a subscription for the service
+> Message: The AWS Access Key Id needs a subscription for the service
 
 Solution: Make sure you are subscribed to the free plan. [Subscribe](https://portal.aws.amazon.com/billing/signup?type=resubscribe#/resubscribed)
 
 
-Message: TypeError: fsevents is not a constructor
+> Message: TypeError: fsevents is not a constructor
 
 Solution: `npm audit fix --force`
+
+> Behaviour: data seems not to be synchronising with the cloud and or viceversa
+
+Solution: `amplify update api`
+Make sure you answer the following questions as
+- Configure conflict detection? __Y__
+- Select the default resolution strategy __Auto Merge__
+- Do you want to override default per model settings? __N__
