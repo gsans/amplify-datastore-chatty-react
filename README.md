@@ -11,7 +11,7 @@ In this workshop we'll learn how to use Amplify DataStore to create `Chatty` a c
 - [Setup Amplify DataStore](#setup-amplify-datastore)
 - [Deploying via the Amplify Console](#deploying-via-the-amplify-console)
 - [Removing / Deleting Services](#removing-services)
-- [Appendix](#appendix)
+- [Appendix and trobleshooting](#appendix)
 
 <!-- ## Redeeming our AWS Credit   
 1. Visit the [AWS Console](https://console.aws.amazon.com/console).
