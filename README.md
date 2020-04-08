@@ -295,6 +295,8 @@ Next, we'll generate the models to access our messages from our __ChattyAPI__
 amplify codegen models
 ```
 
+> Important: DO NOT forget to generate models every time you introduce a change in your schema.
+
 Now, the AWS Amplify CLI has generated the necessary data models and you will see a new folder in your source: __models__. The files in this folder hold your data model classes and schema.
 
 ```bash
