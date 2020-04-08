@@ -316,8 +316,7 @@ import { Chatty } from "./models";
 await DataStore.save(
   new Chatty({
     user: "amplify-user",
-    message: "Hi everyone!",
-    createdAt: new Date().toISOString()
+    message: "Hi everyone!"
   })
 )
 ```
@@ -390,8 +389,7 @@ async function createMessage(state, dispatch) {
     await DataStore.save(
       new Chatty({
         user: state.username,
-        message: state.message.message,
-        createdAt: new Date().toISOString()
+        message: state.message.message
       })
     );
     state.message.message = '';
