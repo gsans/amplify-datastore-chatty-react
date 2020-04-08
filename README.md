@@ -356,7 +356,7 @@ import moment from 'moment'
 const initialState = {
   username: "",
   messages: [],
-  message: { message: "", createdAt: "" }
+  message: ""
 }
 
 function reducer(state, action) {
@@ -368,7 +368,7 @@ function reducer(state, action) {
     case 'add':
       return { ...state, messages: [ ...state.messages, action.message ] }
     case 'updateInput':
-      return { ...state, message: { [action.inputValue]: action.value } }
+      return { ...state, [action.inputValue]: action.value }
     default: new Error()
   }
 }
@@ -384,15 +384,15 @@ async function getMessages(dispatch) {
 }
 
 async function createMessage(state, dispatch) {
-  if (state.message.message === '') return;
+  if (state.message === '') return;
   try {
     await DataStore.save(
       new Chatty({
         user: state.username,
-        message: state.message.message
+        message: state.message
       })
     );
-    state.message.message = '';
+    state.message = '';
     getMessages(dispatch);
   } catch (err) {
     console.log('error creating message...', err)
@@ -419,7 +419,7 @@ function App() {
         <input
           type="text" placeholder="Enter your message..."
           onChange={ e => updater(e.target.value, 'message', dispatch) }
-          value={ state.message.message }
+          value={ state.message }
         />
         <button onClick={() => createMessage(state, dispatch)}>Create Message</button>
         { state.messages.map((message, index) => (
