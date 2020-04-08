@@ -1,6 +1,6 @@
 # Cloud-enabled Amplify DataStore workshop using React
 
-In this workshop we'll learn how to use Amplify DataStore to create `Chatty` a chat app using React & [AWS Amplify](https://aws-amplify.github.io/).
+In this workshop we'll learn how to use Amplify DataStore to create `Chatty` a single room realtime multi-user chat app using React & [AWS Amplify](https://aws-amplify.github.io/).
 
 ![](./header.png) 
 
