@@ -544,7 +544,13 @@ Solution: `npm audit fix --force`
 
 > Behaviour: data seems not to be synchronising with the cloud and or viceversa
 
-Solution: `amplify update api`
+Solution: 
+
+```
+amplify update api
+amplify push
+```
+
 Make sure you answer the following questions as
 - Configure conflict detection? __Y__
 - Select the default resolution strategy __Auto Merge__
